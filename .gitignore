@@ -1,4 +1,10 @@
 .venv/
+venv/
 __pycache__/
 *.pyc
 *.pyo
+attentions_5.bak
+attentions_5.bak_full
+attention_array.npy
+attention_array.npy.bak_full
+decoded_tokens.npy.bak_full
