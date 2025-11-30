@@ -16,6 +16,7 @@ SmolVLM(Instruct-256M)으로 이미지별 어텐션/토큰을 추출하고, 웹 
 - `extract_smolvlm_batch.py` : 여러 이미지 일괄 추출
 - `app.py` : Flask 웹앱 (토큰 클릭 → 어텐션 히트맵)
 - `benchmark.py` : POPE 포맷 질문 파일로 간단 벤치마크
+- `compute_token_heatmap.py` : 특정 토큰(기본 `jacket`)의 레이어/헤드별 어텐션을 집계해 24×32 서브패치 히트맵과 원본 이미지 오버레이 PNG 생성
 
 ## 환경 준비
 ```bash
@@ -58,12 +59,19 @@ python app.py
 - 토큰을 클릭하면 선택한 레이어/헤드의 어텐션 히트맵이 원본 이미지에 오버레이됩니다.
 - 화면 표시용으로 BPE 마커(Ġ, Ċ, ▁)는 치환되지만, 백엔드 인덱싱은 원본 토큰을 사용합니다.
 
-## 벤치마크 (POPE 샘플)
+## 토큰별 집계 히트맵/오버레이 생성 (compute_token_heatmap.py)
 ```bash
-python benchmark.py \
-  --benchmark-file ../POPE/output/coco/coco_pope_popular_100.json \
-  --image-root ../COCO/val2014 \
-  --output-dir benchmark_output \
-  --layer 20 --head 5 --threshold 0 --limit 10
+python compute_token_heatmap.py \
+  --token jacket \
+  --decoded-tokens decoded_tokens.npy \
+  --attn-dir attentions_5 \
+  --layers 0-29 \
+  --topk 10 \
+  --output token_heatmap.png \
+  --overlay token_heatmap_overlay.png \
+  --overlay-alpha 0.5
 ```
-- 결과: `benchmark_output/summary.jsonl`, `predictions.jsonl`, `benchmark_output/images/`(히트맵/오버레이)
+- 처리: 각 레이어/헤드의 토큰 어텐션을 상위 `topk`만 사용해 재정규화하고, 3×4 패치 × 8×8 서브패치 = 24×32 그리드로 집계
+  - 가중치: `attn_sum × (1 - entropy_norm)` (sum이 클수록, 엔트로피가 낮을수록 영향도 ↑)
+  - 엔트로피 정규화: 레이어/헤드별 분포 엔트로피를 `log(N)`으로 나누어 0~1 구간으로 만든 뒤 (1 - 값)으로 뒤집어 사용
+- 결과: 히트맵(`token_heatmap.png`)과 원본 이미지에 최근접 보간으로 격자 구조를 유지한 오버레이(`token_heatmap_overlay.png`)

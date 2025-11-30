@@ -3,6 +3,7 @@ venv/
 __pycache__/
 *.pyc
 *.pyo
+attentions/
 attentions_5.bak
 attentions_5.bak_full
 attentions_5.bak/
