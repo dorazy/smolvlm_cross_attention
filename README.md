@@ -2,6 +2,15 @@
 
 SmolVLM(Instruct-256M)으로 이미지별 어텐션/토큰을 추출하고, 웹 UI에서 토큰별 어텐션 히트맵을 시각화하는 프로젝트입니다. 단일/일괄 추출 스크립트, Flask 뷰어, 간단 벤치마크 스크립트를 포함합니다.
 
+## Flask 뷰어 빠르게 띄우기 (app.py)
+- 필요 파일: `decoded_tokens.npy`, `attentions_5/attention_fp16_rounded_layer_0..29.npz`, `image.png`(또는 `static/image.png`로 복사됨)
+- 실행:
+  ```bash
+  pip install -r requirements.txt   # 필요 시
+  python app.py                     # http://localhost:5001
+  ```
+- 동작 개요: `/api/initialize`에서 `decoded_tokens.npy`와 첫 번째 레이어를 읽어 토큰 목록/헤드 수를 계산하고, `/api/generate_attention_map`이 요청 시 지정한 레이어의 `.npz`를 불러와 히트맵을 생성합니다. 원본 이미지는 루트의 `image.png`를 `static/image.png`로 복사해 사용합니다.
+
 ## 주요 파일
 - `extract_smolvlm_attn.py` : 단일 이미지 어텐션/토큰 추출
 - `extract_smolvlm_batch.py` : 여러 이미지 일괄 추출
@@ -58,8 +67,3 @@ python benchmark.py \
   --layer 20 --head 5 --threshold 0 --limit 10
 ```
 - 결과: `benchmark_output/summary.jsonl`, `predictions.jsonl`, `benchmark_output/images/`(히트맵/오버레이)
-
-## 주의사항
-- 현재 `attention_array.npy`는 `(30, 9, 1148, 1148)`이며, `decoded_tokens.npy` 및 `attentions_5/*.npz`와 세트로 사용해야 합니다.
-- `attention_array.npy`, `attentions_5/*.npz`는 수백 MB 단위의 대용량 파일입니다. 이동/커밋 시 용량을 고려하세요.
-- GPU가 있으면 `--device cuda`로 속도를 높일 수 있고, VRAM 부족 시 CPU로 실행하세요.
