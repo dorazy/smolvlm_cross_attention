@@ -1,6 +1,25 @@
 # SmolVLM Cross Attention Viewer
 
-SmolVLM(Instruct-256M)으로 이미지별 어텐션/토큰을 추출하고, 웹 UI에서 토큰별 어텐션 히트맵을 시각화하는 프로젝트입니다. 단일/일괄 추출 스크립트, Flask 뷰어, 간단 벤치마크 스크립트를 포함합니다.
+SmolVLM(Instruct-256M)으로 이미지별 어텐션/토큰을 추출하고, 웹 UI에서 토큰별 어텐션 히트맵을 시각화하는 프로젝트입니다. 
+compute_token_heatmap.py를 통해 aggregated attention을 구해서 heatmap overlay로 확인할 수 있습니다.
+
+
+## 토큰별 집계 히트맵/오버레이 생성 (compute_token_heatmap.py)
+```bash
+python compute_token_heatmap.py \
+  --token jacket \
+  --decoded-tokens decoded_tokens.npy \
+  --attn-dir attentions_5 \
+  --layers 0-29 \
+  --topk 10 \
+  --output token_heatmap.png \
+  --overlay token_heatmap_overlay.png \
+  --overlay-alpha 0.5
+```
+- 처리: 각 레이어/헤드의 토큰 어텐션을 상위 `topk`만 사용해 재정규화하고, 3×4 패치 × 8×8 서브패치 = 24×32 그리드로 집계
+  - 가중치: `attn_sum × (1 - entropy_norm)` (sum이 클수록, 엔트로피가 낮을수록 영향도 ↑)
+  - 엔트로피 정규화: 레이어/헤드별 분포 엔트로피를 `log(N)`으로 나누어 0~1 구간으로 만든 뒤 (1 - 값)으로 뒤집어 사용
+- 결과: 히트맵(`token_heatmap.png`)과 원본 이미지에 최근접 보간으로 격자 구조를 유지한 오버레이(`token_heatmap_overlay.png`)
 
 ## Flask 뷰어 빠르게 띄우기 (app.py)
 - 필요 파일: `decoded_tokens.npy`, `attentions_5/attention_fp16_rounded_layer_0..29.npz`, `image.png`(또는 `static/image.png`로 복사됨)
@@ -59,19 +78,3 @@ python app.py
 - 토큰을 클릭하면 선택한 레이어/헤드의 어텐션 히트맵이 원본 이미지에 오버레이됩니다.
 - 화면 표시용으로 BPE 마커(Ġ, Ċ, ▁)는 치환되지만, 백엔드 인덱싱은 원본 토큰을 사용합니다.
 
-## 토큰별 집계 히트맵/오버레이 생성 (compute_token_heatmap.py)
-```bash
-python compute_token_heatmap.py \
-  --token jacket \
-  --decoded-tokens decoded_tokens.npy \
-  --attn-dir attentions_5 \
-  --layers 0-29 \
-  --topk 10 \
-  --output token_heatmap.png \
-  --overlay token_heatmap_overlay.png \
-  --overlay-alpha 0.5
-```
-- 처리: 각 레이어/헤드의 토큰 어텐션을 상위 `topk`만 사용해 재정규화하고, 3×4 패치 × 8×8 서브패치 = 24×32 그리드로 집계
-  - 가중치: `attn_sum × (1 - entropy_norm)` (sum이 클수록, 엔트로피가 낮을수록 영향도 ↑)
-  - 엔트로피 정규화: 레이어/헤드별 분포 엔트로피를 `log(N)`으로 나누어 0~1 구간으로 만든 뒤 (1 - 값)으로 뒤집어 사용
-- 결과: 히트맵(`token_heatmap.png`)과 원본 이미지에 최근접 보간으로 격자 구조를 유지한 오버레이(`token_heatmap_overlay.png`)
